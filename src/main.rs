@@ -1,5 +1,4 @@
 use bevy::{
-    input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},
     prelude::*,
 };
 
@@ -7,8 +6,13 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
-        .add_systems(Update, draw_cursor)
+        .add_systems(Update, (draw_cursor, mouse_click_system))
         .run();
+}
+
+#[derive(Component, Default)]
+struct CursorColor {
+    color: Color,
 }
 
 fn draw_cursor(
@@ -16,6 +20,7 @@ fn draw_cursor(
     ground: Single<&GlobalTransform, With<Ground>>,
     windows: Single<&Window>,
     mut gizmos: Gizmos,
+    color_query: Single<&CursorColor>,
 ) {
     let (camera, camera_transform) = *camera_query;
 
@@ -43,7 +48,7 @@ fn draw_cursor(
             Quat::from_rotation_arc(Vec3::Z, ground.up().as_vec3()),
             ),
             0.2,
-            Color::WHITE,
+            color_query.color,
     );
 }
 
@@ -80,5 +85,25 @@ fn setup(
             MeshMaterial3d(materials.add(Color::WHITE)),
             Transform::from_xyz(0.0, 1.0, 0.0),
     ));
+
+    commands.spawn(CursorColor::default());
 }
 
+fn mouse_click_system(
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
+    mut color_query: Query<&mut CursorColor>,
+) {
+    if let Some(mut cursor_color_state) = color_query.get_single_mut().ok() {
+        if mouse_button_input.just_pressed(MouseButton::Left) {
+            info!("left mouse just pressed");
+            cursor_color_state.color = if cursor_color_state.color == Color::WHITE {
+                Color::srgb(1.0, 0.3, 0.3)
+            } else {
+                Color::WHITE
+            };
+        } else {
+            cursor_color_state.color = Color::WHITE
+        }
+
+    }
+}
